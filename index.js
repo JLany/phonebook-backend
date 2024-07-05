@@ -18,13 +18,14 @@ const unknownEndpoint = (request, response, next) => {
 }
 
 app.use(cors())
+
 app.use(express.json())
 
 // configure logging with morgan
 morgan.token('body', (req, res) => {
   return req.method === 'POST' 
-    ? JSON.stringify(req.body)
-    : ''
+  ? JSON.stringify(req.body)
+  : ''
 })
 
 // app.use(morgan('tiny'))
@@ -39,6 +40,7 @@ app.use(morgan((tokens, req, res) => {
   ].join(' ')
 }))
 
+app.use(express.static('dist'))
 // app.use(requestLogger)
 
 
