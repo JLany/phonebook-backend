@@ -1,6 +1,8 @@
+const cors = require('cors')
 const express = require('express')
 const morgan = require('morgan')
 
+const baseUrl = '/api/persons'
 const app = express()
 
 const requestLogger = (request, response, next) => {
@@ -15,6 +17,7 @@ const unknownEndpoint = (request, response, next) => {
   response.status(404).json({ error: 'unknown endpoint' })
 }
 
+app.use(cors())
 app.use(express.json())
 
 // configure logging with morgan
@@ -38,7 +41,6 @@ app.use(morgan((tokens, req, res) => {
 
 // app.use(requestLogger)
 
-const baseUrl = '/api/persons'
 
 let persons = [
   {
@@ -116,7 +118,7 @@ app.post(baseUrl, (req, res) => {
 
 app.use(unknownEndpoint)
 
-const PORT = 3001
+const PORT = 3001 
 app.listen(PORT, () => {
   console.log(`Server is running on ${PORT}`)
 })
