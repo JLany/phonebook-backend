@@ -1,3 +1,7 @@
+require('dotenv').config()
+
+const Person = require('./models/person')
+
 const cors = require('cors')
 const express = require('express')
 const morgan = require('morgan')
@@ -17,31 +21,40 @@ const unknownEndpoint = (request, response, next) => {
   response.status(404).json({ error: 'unknown endpoint' })
 }
 
-app.use(cors())
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
 
+  if (error.name == 'CastError') {
+    return response.status(400).json({ error: 'malformatted id' })
+  }
+
+  next(error)
+}
+
+app.use(express.static('dist'))
+app.use(cors())
 app.use(express.json())
 
 // configure logging with morgan
-morgan.token('body', (req, res) => {
-  return req.method === 'POST' 
-  ? JSON.stringify(req.body)
-  : ''
+morgan.token('body', (request, response) => {
+  return request.method === 'POST'
+    ? JSON.stringify(request.body)
+    : ''
 })
 
 // app.use(morgan('tiny'))
-app.use(morgan((tokens, req, res) => {
+app.use(morgan((tokens, request, response) => {
   return [
-    tokens.method(req, res),
-    tokens.url(req, res),
-    tokens.status(req, res),
-    tokens.req(req, res, 'content-length'), '-',
-    tokens['response-time'](req, res), 'ms',
-    tokens.body(req, res),
+    tokens.method(request, response),
+    tokens.url(request, response),
+    tokens.status(request, response),
+    tokens.req(request, response, 'content-length'), '-',
+    tokens['response-time'](request, response), 'ms',
+    tokens.body(request, response),
   ].join(' ')
 }))
 
-app.use(express.static('dist'))
-// app.use(requestLogger)
+app.use(requestLogger)
 
 
 let persons = [
@@ -62,63 +75,104 @@ let persons = [
   }
 ]
 
-app.get('/info', (req, res) => {
-  res.send(
-    `
+app.get('/info', (request, response) => {
+  Person.find({}).then(persons => {
+    console.log(persons)
+
+    response.send(
+      `
 <div>
     <p>Phonebook has info for ${persons.length} people</p>
     <p>${new Date()}</p>
 </div>
 `)
+  })
 })
 
-app.get(baseUrl, (req, res) => {
-  res.json(persons)
+app.get(baseUrl, (request, response) => {
+  Person.find({}).then(persons => {
+    response.json(persons)
+  })
 })
 
-app.get(`${baseUrl}/:id`, (req, res) => {
-  const id = parseInt(req.params.id)
-  const person = persons.find(p => p.id === id)
+app.get(`${baseUrl}/:id`, (request, response, next) => {
+  const id = request.params.id
 
-  person
-    ? res.json(person)
-    : res.status(404).end()
+  Person.findById(id)
+    .then(person => {
+      person
+        ? response.json(person)
+        : response.status(404).end()
+    })
+    .catch(error => next(error))
 })
 
-app.delete(`${baseUrl}/:id`, (req, res) => {
-  const id = parseInt(req.params.id)
-  persons = persons.filter(p => p.id !== id)
+app.delete(`${baseUrl}/:id`, (request, response, next) => {
+  const id = request.params.id
 
-  res.status(204).end()
+  Person.findByIdAndDelete(id).then(result => {
+    console.log(result)
+    response.status(204).end()
+  })
+  .catch(error => next(error))
 })
 
-app.post(baseUrl, (req, res) => {
-  const body = req.body
+app.post(baseUrl, (request, response) => {
+  const body = request.body
 
   if (!body.name || !body.number) {
-    return res.status(400).json({
+    return response.status(400).json({
       error: 'name and number cannot be empty'
     })
   }
 
-  if (persons.find(p => p.name === body.name)) {
-    return res.status(400).json({
-      error: 'name must be unique'
+  // Check if exists in db.
+  Person
+    .find({ name: body.name })
+    .then(person => {
+      const newPerson = new Person({
+        name: body.name,
+        number: body.number,
+      })
+      person
+        ? newPerson.save().then(savedPerson => {
+          response.json(savedPerson)
+        })
+        : response.status(400).json({
+          error: 'name must be unique'
+        })
+    })
+})
+
+app.put(`${baseUrl}/:id`, (request, response) => {
+  const id = request.params.id
+  const body = request.body
+
+  if (!body.name || !body.number) {
+    return response.status(400).json({
+      error: 'name and number cannot be empty'
     })
   }
 
   const person = {
-    id: Math.round(Math.random() * 100000),
     name: body.name,
     number: body.number,
   }
 
-  persons = persons.concat(person)
-
-  res.json(person)
+  Person
+    .findByIdAndUpdate(
+      id, person,
+      { new: true } // configures the returned object in the callback to be the updated object
+    )
+    .then(updatedPerson => {
+      console.log(updatedPerson)
+      response.status(201).json(updatedPerson)
+    })
 })
 
 app.use(unknownEndpoint)
+
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
