@@ -20,7 +20,17 @@ const personSchema = mongoose.Schema({
     minLength: [3, 'the field \'name\' must be at least 3 charcters long'],
     unique: true
   },
-  number: String,
+  number: {
+    type: String,
+    minLength: [8, 'the field \'number\' must be of length 8 or more'],
+    validate: {
+      validator: (value) => {
+        const phoneNumberRegex = /^\d{2,3}-\d+$/;
+        return phoneNumberRegex.test(value)
+      },
+      message: 'number format is invalid. the field \'number\' should be in the form XXX-XXXXX.. or XX-XXXXXX...'
+    }
+  },
 })
 
 personSchema.set('toJSON', {
