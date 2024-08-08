@@ -24,8 +24,12 @@ const unknownEndpoint = (request, response, next) => {
 const errorHandler = (error, request, response, next) => {
   console.error(error.message)
 
-  if (error.name == 'CastError') {
+  if (error.name === 'CastError') {
     return response.status(400).json({ error: 'malformatted id' })
+  }
+
+  if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
   }
 
   next(error)
@@ -114,60 +118,64 @@ app.delete(`${baseUrl}/:id`, (request, response, next) => {
     console.log(result)
     response.status(204).end()
   })
-  .catch(error => next(error))
+    .catch(error => next(error))
 })
 
-app.post(baseUrl, (request, response) => {
-  const body = request.body
+app.post(baseUrl, (request, response, next) => {
 
-  if (!body.name || !body.number) {
-    return response.status(400).json({
-      error: 'name and number cannot be empty'
-    })
-  }
+  const { name, number } = request.body
 
-  // Check if exists in db.
-  Person
-    .find({ name: body.name })
-    .then(person => {
-      const newPerson = new Person({
-        name: body.name,
-        number: body.number,
-      })
-      person
-        ? newPerson.save().then(savedPerson => {
-          response.json(savedPerson)
-        })
-        : response.status(400).json({
-          error: 'name must be unique'
-        })
+  const person = new Person({
+    name: name,
+    number: number
+  })
+
+  person.save()
+    .then(savedPerson => {
+      response.status(201).json(savedPerson)
     })
+    .catch(error => next(error))
+
+  // Person
+  //   .find({ name: body.name })
+  //   .then(person => {
+  //     const newPerson = new Person({
+  //       name: body.name,
+  //       number: body.number,
+  //     })
+  //     person
+  //       ? newPerson.save().then(savedPerson => {
+  //         response.json(savedPerson)
+  //       })
+  //       : response.status(400).json({
+  //         error: 'name must be unique'
+  //       })
+  //   })
 })
 
-app.put(`${baseUrl}/:id`, (request, response) => {
+app.put(`${baseUrl}/:id`, (request, response, next) => {
   const id = request.params.id
-  const body = request.body
-
-  if (!body.name || !body.number) {
-    return response.status(400).json({
-      error: 'name and number cannot be empty'
-    })
-  }
+  const { name, number } = request.body
 
   const person = {
-    name: body.name,
-    number: body.number,
+    name: name,
+    number: number,
   }
 
   Person
     .findByIdAndUpdate(
       id, person,
-      { new: true } // configures the returned object in the callback to be the updated object
+      {
+        new: true, // configures the returned object in the callback to be the updated object
+        runValidators: true,
+        context: 'query'
+      }
     )
     .then(updatedPerson => {
       console.log(updatedPerson)
       response.status(201).json(updatedPerson)
     })
+    .catch(error => next(error))
 })
 
 app.use(unknownEndpoint)
