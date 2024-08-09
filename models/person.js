@@ -5,7 +5,7 @@ const url = process.env.MONGODB_URI
 mongoose.set('strictQuery', false)
 
 mongoose.connect(url)
-  .then(result => {
+  .then(() => {
     console.log('connected to MongoDB successfully')
   })
   .catch(error => {
@@ -25,7 +25,7 @@ const personSchema = mongoose.Schema({
     minLength: [8, 'the field \'number\' must be of length 8 or more'],
     validate: {
       validator: (value) => {
-        const phoneNumberRegex = /^\d{2,3}-\d+$/;
+        const phoneNumberRegex = /^\d{2,3}-\d+$/
         return phoneNumberRegex.test(value)
       },
       message: 'number format is invalid. the field \'number\' should be in the form XXX-XXXXX.. or XX-XXXXXX...'

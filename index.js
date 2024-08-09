@@ -17,7 +17,7 @@ const requestLogger = (request, response, next) => {
   next()
 }
 
-const unknownEndpoint = (request, response, next) => {
+const unknownEndpoint = (request, response) => {
   response.status(404).json({ error: 'unknown endpoint' })
 }
 
@@ -40,7 +40,7 @@ app.use(cors())
 app.use(express.json())
 
 // configure logging with morgan
-morgan.token('body', (request, response) => {
+morgan.token('body', (request) => {
   return request.method === 'POST'
     ? JSON.stringify(request.body)
     : ''
@@ -61,23 +61,23 @@ app.use(morgan((tokens, request, response) => {
 app.use(requestLogger)
 
 
-let persons = [
-  {
-    name: "Arto Hellas",
-    number: "040-123456",
-    id: 1
-  },
-  {
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-    id: 2
-  },
-  {
-    name: "Dan Abramov",
-    number: "01013657064",
-    id: 3
-  }
-]
+// let persons = [
+//   {
+//     name: 'Arto Hellas',
+//     number: '040-123456',
+//     id: 1
+//   },
+//   {
+//     name: 'Ada Lovelace',
+//     number: '39-44-5323523',
+//     id: 2
+//   },
+//   {
+//     name: 'Dan Abramov',
+//     number: '01013657064',
+//     id: 3
+//   }
+// ]
 
 app.get('/info', (request, response) => {
   Person.find({}).then(persons => {
